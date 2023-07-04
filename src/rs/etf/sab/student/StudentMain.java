@@ -11,9 +11,9 @@ public class StudentMain {
 
     public static void main(String[] args) {
 
-        ArticleOperations articleOperations = null; // Change this for your implementation (points will be negative if interfaces are not implemented).
-        BuyerOperations buyerOperations = null;
-        CityOperations cityOperations = null;
+        ArticleOperations articleOperations = new da190101_ArticleOperationsImpl(); // Change this for your implementation (points will be negative if interfaces are not implemented).
+        BuyerOperations buyerOperations = new da190101_BuyerOperationsImpl();
+        CityOperations cityOperations = new da190101_CityOperationsImpl();
         GeneralOperations generalOperations = null;
         OrderOperations orderOperations = null;
         ShopOperations shopOperations = null;
