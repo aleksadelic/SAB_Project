@@ -59,13 +59,12 @@ public class da190101_BuyerOperationsImpl implements BuyerOperations {
 
     @Override
     public BigDecimal increaseCredit(int idBuyer, BigDecimal credit) {
-        BigDecimal oldCredit = getCredit(idBuyer);
         String query = "update Buyer set credit = credit + ? where IdBuy = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setDouble(1, credit.doubleValue());
             ps.setInt(2, idBuyer);
             ps.executeUpdate();
-            return new BigDecimal(oldCredit.doubleValue() + credit.doubleValue());
+            return getCredit(idBuyer);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -125,7 +124,7 @@ public class da190101_BuyerOperationsImpl implements BuyerOperations {
         da190101_BuyerOperationsImpl obj = new da190101_BuyerOperationsImpl();
         //obj.createBuyer("Aleksa", 1);
         //obj.setCity(1, 2);
-        //System.out.println(obj.increaseCredit(1, new BigDecimal(1000)));
+        System.out.println(obj.increaseCredit(1, new BigDecimal(1000)));
         //System.out.println(obj.getCity(1));
         //System.out.println(obj.createOrder(1));
         List<Integer> orders = obj.getOrders(1);

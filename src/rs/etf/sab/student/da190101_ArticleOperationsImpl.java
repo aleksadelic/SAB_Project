@@ -28,6 +28,6 @@ public class da190101_ArticleOperationsImpl implements ArticleOperations {
 
     public static void main(String[] args) {
         da190101_ArticleOperationsImpl obj = new da190101_ArticleOperationsImpl();
-        obj.createArticle(3, "Bicikl", 20000);
+        obj.createArticle(3, "Bicikl Drugi", 25000);
     }
 }
