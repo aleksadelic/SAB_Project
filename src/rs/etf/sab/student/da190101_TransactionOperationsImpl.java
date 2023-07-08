@@ -17,7 +17,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public BigDecimal getBuyerTransactionsAmmount(int idBuyer) {
-        String query = "select sum(TotalPrice) from BuyerTransaction where IdBuy = ?";
+        String query = "select sum(Ammount) from [Transaction] join BuyerTransaction on " +
+                "[Transaction].IdTra = BuyerTransaction.IdTra where IdBuy = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idBuyer);
             ResultSet rs = ps.executeQuery();
@@ -32,7 +33,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public BigDecimal getShopTransactionsAmmount(int idShop) {
-        String query = "select sum(Profit) from ShopTransaction where IdShop = ?";
+        String query = "select sum(Ammount) from [Transaction] join ShopTransaction on " +
+                "[Transaction].IdTra = ShopTransaction.IdTra where IdShop = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idShop);
             ResultSet rs = ps.executeQuery();
@@ -64,7 +66,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public int getTransactionForBuyersOrder(int idOrder) {
-        String query = "select IdTra from BuyerTransaction where IdOrd = ?";
+        String query = "select [Transaction].IdTra from [Transaction] join BuyerTransaction on " +
+                "[Transaction].IdTra = BuyerTransaction.IdTra where IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idOrder);
             ResultSet rs = ps.executeQuery();
@@ -79,7 +82,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public int getTransactionForShopAndOrder(int idOrder, int idShop) {
-        String query = "select IdTra from ShopTransaction where IdOrd = ? and IdShop = ?";
+        String query = "select [Transaction].IdTra from [Transaction] join ShopTransaction on " +
+                "[Transaction].IdTra = ShopTransaction.IdTra where IdOrd = ? and IdShop = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idOrder);
             ps.setInt(2, idShop);
@@ -117,7 +121,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public BigDecimal getAmmountThatBuyerPayedForOrder(int idOrder) {
-        String query = "select TotalPrice from BuyerTransaction where IdOrd = ?";
+        String query = "select Ammount from [Transaction] join BuyerTransaction on " +
+                "[Transaction].IdTra = BuyerTransaction.IdTra where IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idOrder);
             ResultSet rs = ps.executeQuery();
@@ -132,7 +137,8 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     @Override
     public BigDecimal getAmmountThatShopRecievedForOrder(int idShop, int idOrder) {
-        String query = "select Profit from ShopTransaction where IdShop = ? and IdOrd = ?";
+        String query = "select Ammount from [Transaction] join ShopTransaction on " +
+                "[Transaction].IdTra = ShopTransaction.IdTra where IdShop = ? and IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(1, idShop);
             ps.setInt(2, idOrder);
@@ -147,13 +153,24 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
     }
 
     @Override
-    public BigDecimal getTransactionAmount(int i) {
+    public BigDecimal getTransactionAmount(int idTransaction) {
+        String query = "select Ammount from [Transaction] where IdTra = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idTransaction);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new BigDecimal(rs.getDouble(1));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return null;
     }
 
     @Override
     public BigDecimal getSystemProfit() {
-        String query = "select sum(Profit) from SystemTransaction";
+        String query = "select sum(Ammount) from [Transaction] join SystemTransaction on " +
+                "[Transaction].IdTra = SystemTransaction.IdTra";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -167,23 +184,25 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     public static void main(String[] args) {
         da190101_TransactionOperationsImpl traObj = new da190101_TransactionOperationsImpl();
-        System.out.println(traObj.getAmmountThatBuyerPayedForOrder(40).doubleValue());
-        System.out.println(traObj.getAmmountThatShopRecievedForOrder(116, 40).doubleValue());
-        System.out.println(traObj.getBuyerTransactionsAmmount(62).doubleValue());
+        System.out.println(traObj.getAmmountThatBuyerPayedForOrder(1).doubleValue());
+        System.out.println(traObj.getAmmountThatShopRecievedForOrder(1, 1).doubleValue());
+        System.out.println(traObj.getBuyerTransactionsAmmount(1).doubleValue());
         System.out.println(traObj.getSystemProfit().doubleValue());
-        System.out.println(traObj.getTransactionForBuyersOrder(40));
-        System.out.println(traObj.getTransactionForShopAndOrder(46, 125));
+        System.out.println(traObj.getTransactionForBuyersOrder(1));
+        System.out.println(traObj.getTransactionForShopAndOrder(1, 2));
 
-        System.out.println("Lista transakcija kupca 62: ");
-        List<Integer> list = traObj.getTransationsForBuyer(62);
+        System.out.println("Lista transakcija kupca 1: ");
+        List<Integer> list = traObj.getTransationsForBuyer(1);
         for (int tra: list) {
             System.out.println(tra);
         }
 
-        System.out.println("Lista transakcija prodavnice 116: ");
-        list = traObj.getTransationsForShop(116);
+        System.out.println("Lista transakcija prodavnice 1: ");
+        list = traObj.getTransationsForShop(1);
         for (int tra: list) {
             System.out.println(tra);
         }
+
+        System.out.println(traObj.getTransactionAmount(1));
     }
 }

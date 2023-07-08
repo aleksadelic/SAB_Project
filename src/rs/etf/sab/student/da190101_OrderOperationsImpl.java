@@ -66,31 +66,74 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
     @Override
     public int completeOrder(int idOrder) {
         BigDecimal finalPrice = getFinalPrice(idOrder);
+        if (!checkIfOrderIsPossible(idOrder, finalPrice)) {
+            System.out.println("Order is not possible");
+            return -1;
+        }
         if (createBuyerTransaction(idOrder, finalPrice) == -1) {
+            System.out.println("Buyer transaction failed");
             return -1;
         }
 
         if (createShopTransaction(idOrder) == -1) {
+            System.out.println("Buyer transaction failed");
             return -1;
         }
 
         if (createSystemTransaction(idOrder, finalPrice) == -1) {
+            System.out.println("Buyer transaction failed");
             return -1;
         }
 
-        String query = "update [Order] set Status = 'Sent', TimeSent = ? where idOrder = ?";
+        String query = "update [Order] set Status = 'Sent', TimeSent = ? where IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setDate(1, new java.sql.Date(da190101_GeneralOperationsImpl.
                     GENERAL_OPERATIONS.getCurrentTime().getTime().getTime()));
             ps.setInt(2, idOrder);
+            return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
+            return -1;
         }
-        return -1;
+    }
+
+    private boolean checkIfOrderIsPossible(int idOrder, BigDecimal price) {
+        // check buyer credit
+        String query = "select Credit from Buyer join [Order] on Buyer.IdBuy = [Order].IdBuy where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                if (price.doubleValue() > rs.getDouble(1)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        // check if articles are available
+        query = "select Item.Quantity, Article.Quantity from [Order] join Item on [Order].IdOrd = Item.IdOrd " +
+                "join Article on Item.IdArt = Article.IdArt where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                if (rs.getInt(1) > rs.getInt(2)) {
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     private int createBuyerTransaction(int idOrder, BigDecimal price) {
-        // check buyer credit
         String query = "select Buyer.IdBuy, Credit from Buyer join [Order] on Buyer.IdBuy = [Order].IdBuy where [Order].IdOrd = ?";
         int idBuyer = 0;
         double newCredit = 0;
@@ -120,12 +163,19 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
             e.printStackTrace();
         }
 
-        query = "insert into BuyerTransaction (TotalPrice, IdOrd, IdBuy) values (?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
+        query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             ps.setDouble(1, price.doubleValue());
             ps.setInt(2, idOrder);
-            ps.setInt(3, idBuyer);
             ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                String query1 = "insert into BuyerTransaction (IdTra, IdBuy) values (?, ?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1);
+                ps1.setInt(1, rs.getInt(1));
+                ps1.setInt(2, idBuyer);
+                ps1.executeUpdate();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             return -1;
@@ -142,26 +192,59 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 double shopProfit = getShopProfit(idOrder, rs.getInt(1)).doubleValue() * 0.95;
-                String query1 = "insert into ShopTransaction (Profit, IdOrd, IdShop) values (?, ?, ?)";
-                PreparedStatement ps1 = connection.prepareStatement(query1);
+                String query1 = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1, Statement.RETURN_GENERATED_KEYS);
                 ps1.setDouble(1, shopProfit);
                 ps1.setInt(2, idOrder);
-                ps1.setInt(3, rs.getInt(1));
                 ps1.executeUpdate();
+                ResultSet rs1 = ps1.getGeneratedKeys();
+                if (rs1.next()) {
+                    String query2 = "insert into ShopTransaction (IdTra, IdShop) values (?, ?)";
+                    PreparedStatement ps2 = connection.prepareStatement(query2);
+                    ps2.setInt(1,rs1.getInt(1));
+                    ps2.setInt(2, rs.getInt(1));
+                    ps2.executeUpdate();
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
             return -1;
         }
+
+        // update articles quantity
+        query = "select Article.IdArt, Item.Quantity, Article.Quantity from [Order] join Item on [Order].IdOrd = Item.IdOrd " +
+                "join Article on Item.IdArt = Article.IdArt where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String queryUpdate = "update Article set Quantity = ? where IdArt = ?";
+                PreparedStatement psUpdate = connection.prepareStatement(queryUpdate);
+                psUpdate.setInt(1,rs.getInt(3) - rs.getInt(2));
+                psUpdate.setInt(2, rs.getInt(1));
+                psUpdate.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
         return 1;
     }
 
     private int createSystemTransaction(int idOrder, BigDecimal price) {
-        String query = "insert into SystemTransaction (Profit, IdOrd) values (?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
+        String query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             ps.setDouble(1, price.doubleValue() * 0.05);
             ps.setInt(2, idOrder);
-            return ps.executeUpdate();
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                String query1 = "insert into SystemTransaction (IdTra) values (?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1);
+                ps1.setInt(1,rs.getInt(1));
+                return ps1.executeUpdate();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -342,9 +425,9 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         //System.out.println(ordOp.getFinalPrice(idOrder));
         //ordOp.completeOrder(idOrder);
 
-        int idOrder = buyOp.createOrder(62);
-        ordOp.addArticle(idOrder, 72, 5);
-        ordOp.addArticle(idOrder, 73, 2);
+        int idOrder = buyOp.createOrder(1);
+        ordOp.addArticle(idOrder, 1, 2);
+        ordOp.addArticle(idOrder, 3, 3);
 
         ordOp.completeOrder(idOrder);
     }

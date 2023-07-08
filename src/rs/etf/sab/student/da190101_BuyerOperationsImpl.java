@@ -2,7 +2,6 @@ package rs.etf.sab.student;
 
 import rs.etf.sab.operations.BuyerOperations;
 
-import javax.xml.transform.Result;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;

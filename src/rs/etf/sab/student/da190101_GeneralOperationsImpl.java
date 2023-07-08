@@ -31,7 +31,8 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
         return Calendar.getInstance();
     }
 
-    private String[] tables = new String[]{"Item", "[Order]", "Article", "Buyer", "Shop", "IsConnected", "City"};
+    private String[] tables = new String[]{ "SystemTransaction", "ShopTransaction", "BuyerTransaction", "[Transaction]",
+            "Item", "[Order]", "Article", "Buyer", "Shop", "IsConnected", "City"};
 
     @Override
     public void eraseAll() {
