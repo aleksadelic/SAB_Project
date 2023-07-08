@@ -333,13 +333,19 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         da190101_OrderOperationsImpl ordOp = new da190101_OrderOperationsImpl();
         da190101_BuyerOperationsImpl buyOp = new da190101_BuyerOperationsImpl();
         da190101_ShopOperationsImpl shopOp = new da190101_ShopOperationsImpl();
-        //int idOrder = buyOp.createOrder(62);
-        int idOrder = 40;
-        ordOp.addArticle(idOrder, 74, 3);
-        ordOp.addArticle(idOrder, 75, 5);
+
+        //int idOrder = 40;
+        //ordOp.addArticle(idOrder, 74, 3);
+        //ordOp.addArticle(idOrder, 75, 5);
         /*shopOp.setDiscount(1, 10);
         shopOp.setDiscount(2, 20);*/
-        System.out.println(ordOp.getFinalPrice(idOrder));
+        //System.out.println(ordOp.getFinalPrice(idOrder));
+        //ordOp.completeOrder(idOrder);
+
+        int idOrder = buyOp.createOrder(62);
+        ordOp.addArticle(idOrder, 72, 5);
+        ordOp.addArticle(idOrder, 73, 2);
+
         ordOp.completeOrder(idOrder);
     }
 }
