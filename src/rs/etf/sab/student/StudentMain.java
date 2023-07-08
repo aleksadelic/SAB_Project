@@ -14,10 +14,10 @@ public class StudentMain {
         ArticleOperations articleOperations = new da190101_ArticleOperationsImpl(); // Change this for your implementation (points will be negative if interfaces are not implemented).
         BuyerOperations buyerOperations = new da190101_BuyerOperationsImpl();
         CityOperations cityOperations = new da190101_CityOperationsImpl();
-        GeneralOperations generalOperations = null;
-        OrderOperations orderOperations = null;
-        ShopOperations shopOperations = null;
-        TransactionOperations transactionOperations = null;
+        GeneralOperations generalOperations = new da190101_GeneralOperationsImpl();
+        OrderOperations orderOperations = new da190101_OrderOperationsImpl();
+        ShopOperations shopOperations = new da190101_ShopOperationsImpl();
+        TransactionOperations transactionOperations = new da190101_TransactionOperationsImpl();
 
         TestHandler.createInstance(
                 articleOperations,

@@ -5,11 +5,14 @@ import rs.etf.sab.operations.GeneralOperations;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Calendar;
 
 public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
     private Calendar initialTime = null;
+
+    static GeneralOperations GENERAL_OPERATIONS = new da190101_GeneralOperationsImpl();
 
     Connection connection = DB.getInstance().getConnection();
 
@@ -28,19 +31,29 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
         return Calendar.getInstance();
     }
 
+    private String[] tables = new String[]{"Item", "[Order]", "Article", "Buyer", "Shop", "IsConnected", "City"};
+
     @Override
     public void eraseAll() {
-        String query = "delete from Order where 1 = 1 go" +
-                "delete from Buyer where 1 = 1 go" +
-                "delete from IsConnected where 1= 1 go" +
-                "delete from Article where 1 = 1 go" +
-                "delete from Shop where 1 = 1 go" +
-                "delete from City where 1 = 1 go";
-
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.executeQuery();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        for (int i = 0; i < tables.length; i++) {
+            try (PreparedStatement ps1 = connection.prepareStatement("DISABLE TRIGGER ALL ON " + tables[i]);
+                 PreparedStatement ps2 = connection.prepareStatement("ALTER TABLE " + tables[i] + " NOCHECK CONSTRAINT ALL");
+                 PreparedStatement ps3 = connection.prepareStatement("SET QUOTED_IDENTIFIER ON; DELETE FROM " + tables[i]);
+                 PreparedStatement ps4 = connection.prepareStatement("ALTER TABLE " + tables[i] + " WITH CHECK CHECK CONSTRAINT ALL");
+                 PreparedStatement ps5 = connection.prepareStatement("ENABLE TRIGGER ALL ON " + tables[i]);) {
+                ps1.execute();
+                ps2.execute();
+                ps3.execute();
+                ps4.execute();
+                ps5.execute();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+    public static void main(String[] args) {
+        da190101_GeneralOperationsImpl genOp = new da190101_GeneralOperationsImpl();
+        genOp.eraseAll();
     }
 }
