@@ -10,7 +10,7 @@ import java.util.Calendar;
 
 public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
-    private Calendar initialTime = null;
+    private Calendar time = null;
 
     static GeneralOperations GENERAL_OPERATIONS = new da190101_GeneralOperationsImpl();
 
@@ -18,17 +18,18 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
     @Override
     public void setInitialTime(Calendar calendar) {
-        initialTime = calendar;
+        time = calendar;
     }
 
     @Override
-    public Calendar time(int i) {
-        return null;
+    public Calendar time(int days) {
+        time.add(Calendar.DATE, days);
+        return time;
     }
 
     @Override
     public Calendar getCurrentTime() {
-        return Calendar.getInstance();
+        return time;
     }
 
     private String[] tables = new String[]{ "SystemTransaction", "ShopTransaction", "BuyerTransaction", "[Transaction]",
