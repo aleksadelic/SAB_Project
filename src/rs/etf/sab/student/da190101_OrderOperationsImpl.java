@@ -72,7 +72,9 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
             return -1;
         }
 
-        String query = "update [Order] set Status = 'Sent', TimeSent = ? where IdOrd = ?";
+        da190101_TransactionOperationsImpl.TRANSACTION_OPERATIONS.createBuyerTransaction(idOrder, finalPrice);
+
+        String query = "update [Order] set Status = 'sent', TimeSent = ? where IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setDate(1, new java.sql.Date(da190101_GeneralOperationsImpl.
                     GENERAL_OPERATIONS.getCurrentTime().getTime().getTime()));
@@ -89,6 +91,7 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         int idBuyer = getBuyer(idOrder);
         int buyerCity = da190101_BuyerOperationsImpl.BUYER_OPERATIONS.getCity(idBuyer);
         int nearestCity = da190101_CityOperationsImpl.CITY_OPERATIONS.findNearestCityWithShop(buyerCity);
+        int offset = da190101_CityOperationsImpl.CITY_OPERATIONS.calculateOffset();
 
         // time to get all orders to this city
         ArrayList<Integer> list = new ArrayList<>();
@@ -137,12 +140,12 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         while (j < path.size()) {
             query = "select Distance from IsConnected where IdCity1 = ? and IdCity2 = ?";
             try (PreparedStatement ps = connection.prepareStatement(query)) {
-                ps.setInt(1, path.get(i) + 1);
-                ps.setInt(2, path.get(j) + 1);
+                ps.setInt(1, path.get(i) + offset);
+                ps.setInt(2, path.get(j) + offset);
                 ResultSet rs = ps.executeQuery();
                 if (rs.next()) {
                     locations[0][ind] = locations[0][ind - 1] + rs.getInt(1);
-                    locations[1][ind] = path.get(j) + 1;
+                    locations[1][ind] = path.get(j) + offset;
                     ind++;
                 }
             } catch (SQLException e) {
@@ -273,6 +276,7 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
             ps.setInt(1, idOrder);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
+                if (rs.getDate(1) == null) return null;
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(rs.getDate(1));
                 return calendar;
@@ -290,6 +294,7 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
             ps.setInt(1, idOrder);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
+                if (rs.getDate(1) == null) return null;
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(rs.getDate(1));
                 return calendar;
@@ -343,34 +348,34 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         //System.out.println(ordOp.getFinalPrice(idOrder));
         //ordOp.completeOrder(idOrder);
 
-        /*int idOrder = buyOp.createOrder(1);
-        ordOp.addArticle(idOrder, 1, 2);
-        ordOp.addArticle(idOrder, 3, 3);
-        ordOp.addArticle(idOrder, 7, 1);*/
-
         Calendar initialTime = Calendar.getInstance();
         initialTime.clear();
         initialTime.set(2018, 0, 1);
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.setInitialTime(initialTime);
 
-        ordOp.completeOrder(1);
+        int idOrder = buyOp.createOrder(1);
+        ordOp.addArticle(idOrder, 1, 2);
+        ordOp.addArticle(idOrder, 3, 3);
+        ordOp.addArticle(idOrder, 7, 1);
 
-        System.out.println("Dan 0: " + ordOp.getLocation(1));
+        ordOp.completeOrder(idOrder);
+
+        System.out.println("Dan 0: " + ordOp.getLocation(idOrder));
 
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.time(3);
 
-        System.out.println("Dan 3: " + ordOp.getLocation(1));
+        System.out.println("Dan 3: " + ordOp.getLocation(idOrder));
 
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.time(10);
 
-        System.out.println("Dan 13: " + ordOp.getLocation(1));
+        System.out.println("Dan 13: " + ordOp.getLocation(idOrder));
 
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.time(7);
 
-        System.out.println("Dan 20: " + ordOp.getLocation(1));
+        System.out.println("Dan 20: " + ordOp.getLocation(idOrder));
 
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.time(1);
 
-        System.out.println("Dan 21: " + ordOp.getLocation(1));
+        System.out.println("Dan 21: " + ordOp.getLocation(idOrder));
     }
 }

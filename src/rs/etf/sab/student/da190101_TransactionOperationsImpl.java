@@ -22,7 +22,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ps.setInt(1, idBuyer);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -38,7 +38,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ps.setInt(1, idShop);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -56,11 +56,11 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             while (rs.next()) {
                 list.add(rs.getInt(1));
             }
+            if (list.size() != 0) return list;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
-        return list;
+        return null;
     }
 
     @Override
@@ -106,15 +106,29 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             while (rs.next()) {
                 list.add(rs.getInt(1));
             }
+            if (list.size() != 0) return list;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
-        return list;
+        return null;
     }
 
     @Override
-    public Calendar getTimeOfExecution(int i) {
+    public Calendar getTimeOfExecution(int idTransaction) {
+        String query = "select ExecutionTime from [Transaction] where IdTra = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idTransaction);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                if (rs.getDate(1) == null) return null;
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(rs.getDate(1));
+                return calendar;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return null;
     }
 
@@ -126,7 +140,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ps.setInt(1, idOrder);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -143,7 +157,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ps.setInt(2, idOrder);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -158,7 +172,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ps.setInt(1, idTransaction);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -173,7 +187,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -183,22 +197,18 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
 
     public int createTransactions(int idOrder, Calendar receivedTime) {
         BigDecimal finalPrice = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getFinalPrice(idOrder);
-        if (createBuyerTransaction(idOrder, finalPrice) == -1) {
-            System.out.println("Buyer transaction failed");
+
+        if (createShopTransaction(idOrder, receivedTime) == -1) {
+            System.out.println("Shop transaction failed");
             return -1;
         }
 
-        if (createShopTransaction(idOrder) == -1) {
-            System.out.println("Buyer transaction failed");
+        if (createSystemTransaction(idOrder, finalPrice, receivedTime) == -1) {
+            System.out.println("System transaction failed");
             return -1;
         }
 
-        if (createSystemTransaction(idOrder, finalPrice) == -1) {
-            System.out.println("Buyer transaction failed");
-            return -1;
-        }
-
-        String query = "update [Order] set Status = 'Arrived', TimeReceived = ? where IdOrd = ?";
+        String query = "update [Order] set Status = 'arrived', TimeReceived = ? where IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ps.setInt(2, idOrder);
             ps.setDate(1, new java.sql.Date(receivedTime.getTime().getTime()));
@@ -211,7 +221,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
         return 1;
     }
 
-    private int createBuyerTransaction(int idOrder, BigDecimal price) {
+    public int createBuyerTransaction(int idOrder, BigDecimal price) {
         String query = "select Buyer.IdBuy, Credit from Buyer join [Order] on Buyer.IdBuy = [Order].IdBuy where [Order].IdOrd = ?";
         int idBuyer = 0;
         double newCredit = 0;
@@ -241,10 +251,12 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             e.printStackTrace();
         }
 
-        query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+        query = "insert into [Transaction] (Ammount, IdOrd, ExecutionTime) values (?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             ps.setDouble(1, price.doubleValue());
             ps.setInt(2, idOrder);
+            ps.setDate(3, new java.sql.Date(da190101_GeneralOperationsImpl.
+                    GENERAL_OPERATIONS.getCurrentTime().getTime().getTime()));
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
@@ -262,7 +274,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
         return 1;
     }
 
-    private int createShopTransaction(int idOrder) {
+    private int createShopTransaction(int idOrder, Calendar receivedTime) {
         String query = "select distinct(Shop.IdShop) from Shop join Article on Shop.IdShop = Article.IdShop join" +
                 " Item on Item.IdArt = Article.IdArt join [Order] on Item.IdOrd = [Order].IdOrd where [Order].IdOrd = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
@@ -270,16 +282,17 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 double shopProfit = getShopProfit(idOrder, rs.getInt(1)).doubleValue() * 0.95;
-                String query1 = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+                String query1 = "insert into [Transaction] (Ammount, IdOrd, ExecutionTime) values (?, ?, ?)";
                 PreparedStatement ps1 = connection.prepareStatement(query1, Statement.RETURN_GENERATED_KEYS);
                 ps1.setDouble(1, shopProfit);
                 ps1.setInt(2, idOrder);
+                ps1.setDate(3, new java.sql.Date(receivedTime.getTime().getTime()));
                 ps1.executeUpdate();
                 ResultSet rs1 = ps1.getGeneratedKeys();
                 if (rs1.next()) {
                     String query2 = "insert into ShopTransaction (IdTra, IdShop) values (?, ?)";
                     PreparedStatement ps2 = connection.prepareStatement(query2);
-                    ps2.setInt(1,rs1.getInt(1));
+                    ps2.setInt(1, rs1.getInt(1));
                     ps2.setInt(2, rs.getInt(1));
                     ps2.executeUpdate();
                 }
@@ -310,11 +323,12 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
         return 1;
     }
 
-    private int createSystemTransaction(int idOrder, BigDecimal price) {
-        String query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+    private int createSystemTransaction(int idOrder, BigDecimal price, Calendar receivedTime) {
+        String query = "insert into [Transaction] (Ammount, IdOrd, ExecutionTime) values (?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             ps.setDouble(1, price.doubleValue() * 0.05);
             ps.setInt(2, idOrder);
+            ps.setDate(3, new java.sql.Date(receivedTime.getTime().getTime()));
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {

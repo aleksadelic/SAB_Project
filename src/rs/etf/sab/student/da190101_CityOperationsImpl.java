@@ -119,52 +119,31 @@ public class da190101_CityOperationsImpl implements CityOperations {
     }
 
     public int findNearestCityWithShop(int myCity) {
-        /*int myCity = 0;
-        String query = "select City.IdCity from City join Buyer on " +
-                "Buyer.IdCity = City.IdCity where IdBuy = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.setInt(1, idBuyer);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                myCity = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }*/
+        int numOfCities = getNumberOfCities();
+        int offset = calculateOffset();
 
-        int numOfCities = 0;
-        String query = "select count(*) from City";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                numOfCities = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        int[][] distances = initializeCostsMatrix(numOfCities);
+        int[][] distances = initializeCostsMatrix(numOfCities, offset);
 
         PriorityQueue<Wrapper> pq = new PriorityQueue<>(new WrapperComparator());
         LinkedList<Integer> path = new LinkedList<>();
-        path.add(myCity - 1);
+        path.add(myCity - offset);
         pq.add(new Wrapper(path, 0));
 
         while (pq.size() > 0) {
             Wrapper node = pq.poll();
-            if (checkIfShopExistsInCity(node.path.getLast() + 1)) {
+            if (checkIfShopExistsInCity(node.path.getLast() + offset)) {
                 System.out.print("Put: ");
                 for (int city: node.path) {
-                    System.out.print((city + 1) + " ");
+                    System.out.print((city + offset) + " ");
                 }
                 System.out.println("Cena " + node.cost);
-                return node.path.getLast() + 1;
+                return node.path.getLast() + offset;
             }
 
             if (node.path.size() == numOfCities) {
-                int distance = distances[myCity - 1][node.path.getLast()];
+                int distance = distances[myCity - offset][node.path.getLast()];
                 LinkedList<Integer> list = (LinkedList<Integer>) node.path.clone();
-                list.add(myCity - 1);
+                list.add(myCity - offset);
                 pq.add(new Wrapper(list,node.cost + distance));
             } else {
                 for (int i = 0; i < numOfCities; i++) {
@@ -191,30 +170,22 @@ public class da190101_CityOperationsImpl implements CityOperations {
     }
 
     public LinkedList<Integer> findShortestPath(int src, int dst) {
-        int numOfCities = 0;
-        String query = "select count(*) from City";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                numOfCities = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        int numOfCities = getNumberOfCities();
+        int offset = calculateOffset();
 
-        int[][] distances = initializeCostsMatrix(numOfCities);
+        int[][] distances = initializeCostsMatrix(numOfCities, offset);
 
         PriorityQueue<Wrapper> pq = new PriorityQueue<>(new WrapperComparator());
         LinkedList<Integer> path = new LinkedList<>();
-        path.add(src - 1);
+        path.add(src - offset);
         pq.add(new Wrapper(path, 0));
 
         while (pq.size() > 0) {
             Wrapper node = pq.poll();
-            if (node.path.getLast() + 1 == dst) {
+            if (node.path.getLast() + offset == dst) {
                 System.out.print("Put: ");
                 for (int city: node.path) {
-                    System.out.print((city + 1) + " ");
+                    System.out.print((city + offset) + " ");
                 }
                 System.out.println("Cena " + node.cost);
                 // last element is cost
@@ -223,9 +194,9 @@ public class da190101_CityOperationsImpl implements CityOperations {
             }
 
             if (node.path.size() == numOfCities) {
-                int distance = distances[src - 1][node.path.getLast()];
+                int distance = distances[src - offset][node.path.getLast()];
                 LinkedList<Integer> list = (LinkedList<Integer>) node.path.clone();
-                list.add(src - 1);
+                list.add(src - offset);
                 pq.add(new Wrapper(list,node.cost + distance));
             } else {
                 for (int i = 0; i < numOfCities; i++) {
@@ -251,7 +222,7 @@ public class da190101_CityOperationsImpl implements CityOperations {
         return null;
     }
 
-    private int[][] initializeCostsMatrix(int numOfCities) {
+    private int[][] initializeCostsMatrix(int numOfCities, int offset) {
 
         int[][] distances = new int[numOfCities][numOfCities];
 
@@ -265,8 +236,8 @@ public class da190101_CityOperationsImpl implements CityOperations {
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                int city1 = rs.getInt(1) - 1;
-                int city2 = rs.getInt(2) - 1;
+                int city1 = rs.getInt(1) - offset;
+                int city2 = rs.getInt(2) - offset;
                 int distance = rs.getInt(3);
                 distances[city1][city2] = distance;
             }
@@ -274,7 +245,7 @@ public class da190101_CityOperationsImpl implements CityOperations {
             e.printStackTrace();
         }
 
-        for (int i = 0; i < numOfCities; i++) {
+        /*for (int i = 0; i < numOfCities; i++) {
             for (int j = 0; j < numOfCities; j++) {
                 if (distances[i][j] == Integer.MAX_VALUE)
                     System.out.print("x ");
@@ -282,8 +253,36 @@ public class da190101_CityOperationsImpl implements CityOperations {
                     System.out.print(distances[i][j] + " ");
             }
             System.out.println();
-        }
+        }*/
         return distances;
+    }
+
+    public int getNumberOfCities() {
+        int numOfCities = 0;
+        String query = "select count(*) from City";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                numOfCities = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return numOfCities;
+    }
+
+    public int calculateOffset() {
+        int offset = 0;
+        String query = "select min(IdCity) from City";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                offset = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return offset;
     }
 
     public boolean checkIfShopExistsInCity(int idCity) {

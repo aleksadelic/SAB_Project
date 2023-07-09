@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
-    private Calendar time = null;
+    private static Calendar time = null;
     private int day = 0;
     public HashMap<Integer, int[][]> orderMap = new HashMap<>();
 
@@ -21,7 +21,10 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
     @Override
     public void setInitialTime(Calendar calendar) {
-        time = calendar;
+        time = Calendar.getInstance();
+        time.clear();
+        time.setTime(calendar.getTime());
+        day = 0;
     }
 
     @Override
@@ -30,10 +33,9 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
         day += days;
 
         // update orders locations
-        for (Map.Entry<Integer, int[][]> entry: orderMap.entrySet()) {
+        for (Map.Entry<Integer, int[][]> entry: GENERAL_OPERATIONS.orderMap.entrySet()) {
             int idOrder = entry.getKey();
             int[][] locations = entry.getValue();
-
 
             int ind = 0;
             while (ind < locations[0].length && day >= locations[0][ind]) {
