@@ -215,22 +215,16 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
 
     @Override
     public BigDecimal getFinalPrice(int idOrder) {
-        String query = "select Item.IdArt, Item.Quantity, Price from Item Join Article on Item.IdArt = Article.IdArt where IdItem = ?";
-        double sum = 0;
-        List<Integer> items = getItems(idOrder);
-        for (int item: items) {
-            try (PreparedStatement ps = connection.prepareStatement(query)) {
-                ps.setInt(1, item);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) {
-                    sum += rs.getInt(2) * rs.getDouble(3);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return null;
-            }
+        String query = "{ call SP_FINAL_PRICE (?, ?) }";
+        try (CallableStatement cs = connection.prepareCall(query)) {
+            cs.setInt(1, idOrder);
+            cs.registerOutParameter(2, Types.DECIMAL);
+            cs.execute();
+            return new BigDecimal(cs.getDouble(2)).setScale(3);
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        return new BigDecimal(sum).subtract(getDiscountSum(idOrder)).setScale(3);
+        return null;
     }
 
     @Override

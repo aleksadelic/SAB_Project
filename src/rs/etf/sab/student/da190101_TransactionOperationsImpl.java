@@ -271,6 +271,24 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             return -1;
         }
 
+        // update articles quantity
+        query = "select Article.IdArt, Item.Quantity, Article.Quantity from [Order] join Item on [Order].IdOrd = Item.IdOrd " +
+                "join Article on Item.IdArt = Article.IdArt where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String queryUpdate = "update Article set Quantity = ? where IdArt = ?";
+                PreparedStatement psUpdate = connection.prepareStatement(queryUpdate);
+                psUpdate.setInt(1,rs.getInt(3) - rs.getInt(2));
+                psUpdate.setInt(2, rs.getInt(1));
+                psUpdate.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
         return 1;
     }
 
@@ -296,24 +314,6 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
                     ps2.setInt(2, rs.getInt(1));
                     ps2.executeUpdate();
                 }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return -1;
-        }
-
-        // update articles quantity
-        query = "select Article.IdArt, Item.Quantity, Article.Quantity from [Order] join Item on [Order].IdOrd = Item.IdOrd " +
-                "join Article on Item.IdArt = Article.IdArt where [Order].IdOrd = ?";
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.setInt(1, idOrder);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String queryUpdate = "update Article set Quantity = ? where IdArt = ?";
-                PreparedStatement psUpdate = connection.prepareStatement(queryUpdate);
-                psUpdate.setInt(1,rs.getInt(3) - rs.getInt(2));
-                psUpdate.setInt(2, rs.getInt(1));
-                psUpdate.executeUpdate();
             }
         } catch (SQLException e) {
             e.printStackTrace();
