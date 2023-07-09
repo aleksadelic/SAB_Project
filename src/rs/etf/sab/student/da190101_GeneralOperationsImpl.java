@@ -5,14 +5,17 @@ import rs.etf.sab.operations.GeneralOperations;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
     private Calendar time = null;
+    private int day = 0;
+    public HashMap<Integer, int[][]> orderMap = new HashMap<>();
 
-    static GeneralOperations GENERAL_OPERATIONS = new da190101_GeneralOperationsImpl();
+    static da190101_GeneralOperationsImpl GENERAL_OPERATIONS = new da190101_GeneralOperationsImpl();
 
     Connection connection = DB.getInstance().getConnection();
 
@@ -23,7 +26,40 @@ public class da190101_GeneralOperationsImpl implements GeneralOperations {
 
     @Override
     public Calendar time(int days) {
-        time.add(Calendar.DATE, days);
+        time.add(Calendar.DAY_OF_MONTH, days);
+        day += days;
+
+        // update orders locations
+        for (Map.Entry<Integer, int[][]> entry: orderMap.entrySet()) {
+            int idOrder = entry.getKey();
+            int[][] locations = entry.getValue();
+
+
+            int ind = 0;
+            while (ind < locations[0].length && day >= locations[0][ind]) {
+                ind++;
+            }
+            int currLocation = locations[1][ind - 1];
+
+            if (ind == locations[1].length) {
+                int offset = day - locations[0][ind - 1];
+                Calendar receivedTime = Calendar.getInstance();
+                receivedTime.clear();
+                receivedTime.setTime(time.getTime());
+                receivedTime.add(Calendar.DAY_OF_MONTH, -offset);
+                da190101_TransactionOperationsImpl.TRANSACTION_OPERATIONS.createTransactions(idOrder, receivedTime);
+            }
+
+            String query = "update [Order] set Location = ? where IdOrd = ?";
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setInt(1, currLocation);
+                ps.setInt(2, idOrder);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
         return time;
     }
 

@@ -3,15 +3,14 @@ package rs.etf.sab.student;
 import rs.etf.sab.operations.TransactionOperations;
 
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
 public class da190101_TransactionOperationsImpl implements TransactionOperations {
+
+    static da190101_TransactionOperationsImpl TRANSACTION_OPERATIONS = new da190101_TransactionOperationsImpl();
 
     Connection connection = DB.getInstance().getConnection();
 
@@ -180,6 +179,195 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
             e.printStackTrace();
         }
         return null;
+    }
+
+    public int createTransactions(int idOrder, Calendar receivedTime) {
+        BigDecimal finalPrice = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getFinalPrice(idOrder);
+        if (createBuyerTransaction(idOrder, finalPrice) == -1) {
+            System.out.println("Buyer transaction failed");
+            return -1;
+        }
+
+        if (createShopTransaction(idOrder) == -1) {
+            System.out.println("Buyer transaction failed");
+            return -1;
+        }
+
+        if (createSystemTransaction(idOrder, finalPrice) == -1) {
+            System.out.println("Buyer transaction failed");
+            return -1;
+        }
+
+        String query = "update [Order] set Status = 'Arrived', TimeReceived = ? where IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(2, idOrder);
+            ps.setDate(1, new java.sql.Date(receivedTime.getTime().getTime()));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        return 1;
+    }
+
+    private int createBuyerTransaction(int idOrder, BigDecimal price) {
+        String query = "select Buyer.IdBuy, Credit from Buyer join [Order] on Buyer.IdBuy = [Order].IdBuy where [Order].IdOrd = ?";
+        int idBuyer = 0;
+        double newCredit = 0;
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                idBuyer = rs.getInt(1);
+                newCredit = rs.getDouble(2) - price.doubleValue();
+                if (newCredit < 0) {
+                    return -1;
+                }
+            } else {
+                return -1;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        query = "update Buyer set Credit = ? where IdBuy = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(2, idBuyer);
+            ps.setDouble(1, newCredit);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setDouble(1, price.doubleValue());
+            ps.setInt(2, idOrder);
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                String query1 = "insert into BuyerTransaction (IdTra, IdBuy) values (?, ?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1);
+                ps1.setInt(1, rs.getInt(1));
+                ps1.setInt(2, idBuyer);
+                ps1.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        return 1;
+    }
+
+    private int createShopTransaction(int idOrder) {
+        String query = "select distinct(Shop.IdShop) from Shop join Article on Shop.IdShop = Article.IdShop join" +
+                " Item on Item.IdArt = Article.IdArt join [Order] on Item.IdOrd = [Order].IdOrd where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                double shopProfit = getShopProfit(idOrder, rs.getInt(1)).doubleValue() * 0.95;
+                String query1 = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1, Statement.RETURN_GENERATED_KEYS);
+                ps1.setDouble(1, shopProfit);
+                ps1.setInt(2, idOrder);
+                ps1.executeUpdate();
+                ResultSet rs1 = ps1.getGeneratedKeys();
+                if (rs1.next()) {
+                    String query2 = "insert into ShopTransaction (IdTra, IdShop) values (?, ?)";
+                    PreparedStatement ps2 = connection.prepareStatement(query2);
+                    ps2.setInt(1,rs1.getInt(1));
+                    ps2.setInt(2, rs.getInt(1));
+                    ps2.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        // update articles quantity
+        query = "select Article.IdArt, Item.Quantity, Article.Quantity from [Order] join Item on [Order].IdOrd = Item.IdOrd " +
+                "join Article on Item.IdArt = Article.IdArt where [Order].IdOrd = ?";
+        try (PreparedStatement ps = connection.prepareStatement(query)) {
+            ps.setInt(1, idOrder);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String queryUpdate = "update Article set Quantity = ? where IdArt = ?";
+                PreparedStatement psUpdate = connection.prepareStatement(queryUpdate);
+                psUpdate.setInt(1,rs.getInt(3) - rs.getInt(2));
+                psUpdate.setInt(2, rs.getInt(1));
+                psUpdate.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+        return 1;
+    }
+
+    private int createSystemTransaction(int idOrder, BigDecimal price) {
+        String query = "insert into [Transaction] (Ammount, IdOrd) values (?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setDouble(1, price.doubleValue() * 0.05);
+            ps.setInt(2, idOrder);
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                String query1 = "insert into SystemTransaction (IdTra) values (?)";
+                PreparedStatement ps1 = connection.prepareStatement(query1);
+                ps1.setInt(1,rs.getInt(1));
+                return ps1.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    public BigDecimal getShopProfit(int idOrder, int idShop) {
+        String query = "select Item.IdArt, Item.Quantity, Price from Item Join Article on Item.IdArt = Article.IdArt where IdItem = ? and Article.IdShop = ?";
+        double sum = 0;
+        List<Integer> items = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getItems(idOrder);
+        for (int item: items) {
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setInt(1, item);
+                ps.setInt(2, idShop);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    sum += rs.getInt(2) * rs.getDouble(3);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return new BigDecimal(sum).subtract(getDiscountSumShop(idOrder, idShop));
+    }
+
+    public BigDecimal getDiscountSumShop(int idOrder, int idShop) {
+        String query = "select Item.IdArt, Item.Quantity, Price, Discount from Item Join Article on Item.IdArt = Article.IdArt" +
+                " join Shop on Article.IdShop = Shop.IdShop where IdItem = ? and Shop.IdShop = ?";
+        double sum = 0;
+        List<Integer> items = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getItems(idOrder);
+        for (int item: items) {
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setInt(1, item);
+                ps.setInt(2, idShop);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    sum += rs.getInt(2) * rs.getDouble(3) * rs.getInt(4) / 100;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return new BigDecimal(sum);
     }
 
     public static void main(String[] args) {

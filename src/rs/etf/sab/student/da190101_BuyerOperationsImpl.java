@@ -9,6 +9,8 @@ import java.util.List;
 
 public class da190101_BuyerOperationsImpl implements BuyerOperations {
 
+    static BuyerOperations BUYER_OPERATIONS = new da190101_BuyerOperationsImpl();
+
     Connection connection = DB.getInstance().getConnection();
 
     @Override
@@ -58,16 +60,19 @@ public class da190101_BuyerOperationsImpl implements BuyerOperations {
 
     @Override
     public BigDecimal increaseCredit(int idBuyer, BigDecimal credit) {
-        String query = "update Buyer set credit = credit + ? where IdBuy = ?";
+        BigDecimal oldCredit = getCredit(idBuyer).setScale(3);
+        String query = "update Buyer set credit = ? where IdBuy = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.setDouble(1, credit.doubleValue());
+            BigDecimal newCredit = oldCredit.add(credit);
+            newCredit.setScale(3);
+            ps.setDouble(1, newCredit.doubleValue());
             ps.setInt(2, idBuyer);
             ps.executeUpdate();
-            return getCredit(idBuyer);
+            return newCredit;
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return new BigDecimal(-1);
+        return null;
     }
 
     @Override
@@ -111,12 +116,12 @@ public class da190101_BuyerOperationsImpl implements BuyerOperations {
             ps.setInt(1, idBuyer);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                return new BigDecimal(rs.getDouble(1));
+                return new BigDecimal(rs.getDouble(1)).setScale(3);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return new BigDecimal(-1);
+        return null;
     }
 
     public static void main(String[] args) {

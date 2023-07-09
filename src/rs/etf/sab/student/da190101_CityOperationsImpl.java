@@ -7,6 +7,8 @@ import java.util.*;
 
 public class da190101_CityOperationsImpl implements CityOperations {
 
+    static da190101_CityOperationsImpl CITY_OPERATIONS = new da190101_CityOperationsImpl();
+
     class Wrapper {
         LinkedList<Integer> path;
         int cost;
@@ -116,8 +118,8 @@ public class da190101_CityOperationsImpl implements CityOperations {
         return list;
     }
 
-    public int findNearestCityWithShop(int idBuyer) {
-        int myCity = 0;
+    public int findNearestCityWithShop(int myCity) {
+        /*int myCity = 0;
         String query = "select City.IdCity from City join Buyer on " +
                 "Buyer.IdCity = City.IdCity where IdBuy = ?";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
@@ -128,10 +130,10 @@ public class da190101_CityOperationsImpl implements CityOperations {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-        }
+        }*/
 
         int numOfCities = 0;
-        query = "select count(*) from City";
+        String query = "select count(*) from City";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -188,7 +190,7 @@ public class da190101_CityOperationsImpl implements CityOperations {
         return -1;
     }
 
-    public List<Integer> findShortestPath(int src, int dst) {
+    public LinkedList<Integer> findShortestPath(int src, int dst) {
         int numOfCities = 0;
         String query = "select count(*) from City";
         try (PreparedStatement ps = connection.prepareStatement(query)) {
@@ -215,6 +217,8 @@ public class da190101_CityOperationsImpl implements CityOperations {
                     System.out.print((city + 1) + " ");
                 }
                 System.out.println("Cena " + node.cost);
+                // last element is cost
+                node.path.add(node.cost);
                 return node.path;
             }
 
@@ -310,16 +314,16 @@ public class da190101_CityOperationsImpl implements CityOperations {
         //obj.connectCities(3, 4, 5);
         //obj.connectCities(2, 4, 10);
 
-        /*obj.connectCities(1, 2, 8);
+        obj.connectCities(1, 2, 8);
         obj.connectCities(1, 3, 2);
         obj.connectCities(2, 4, 10);
         obj.connectCities(3, 4, 15);
         obj.connectCities(4, 5, 3);
         obj.connectCities(4, 6, 3);
         obj.connectCities(5, 7, 2);
-        obj.connectCities(6, 7, 1);*/
+        obj.connectCities(6, 7, 1);
 
         System.out.println(obj.findNearestCityWithShop(1));
-        //obj.findShortestPath(7, 4);
+        obj.findShortestPath(7, 4);
     }
 }
