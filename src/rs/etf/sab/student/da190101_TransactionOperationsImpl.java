@@ -196,12 +196,7 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
     }
 
     public int createTransactions(int idOrder, Calendar receivedTime) {
-        BigDecimal finalPrice = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getFinalPrice(idOrder);
-
-        if (createShopTransaction(idOrder, receivedTime) == -1) {
-            System.out.println("Shop transaction failed");
-            return -1;
-        }
+        BigDecimal finalPrice = da190101_OrderOperationsImpl.ORDER_OPERATIONS.getFinalPriceWithoutAdditionalDiscount(idOrder);
 
         if (createSystemTransaction(idOrder, finalPrice, receivedTime) == -1) {
             System.out.println("System transaction failed");
@@ -324,9 +319,26 @@ public class da190101_TransactionOperationsImpl implements TransactionOperations
     }
 
     private int createSystemTransaction(int idOrder, BigDecimal price, Calendar receivedTime) {
+        double systemFee = 0.05;
+        // check if user has additional discount
+        String queryDisc = "select * from [Transaction] join [Order] on [Transaction].IdOrd = [Order].IdOrd " +
+                "join BuyerTransaction on [Transaction].IdTra = BuyerTransaction.IdTra where Ammount >= 10000 and " +
+                "[Transaction].IdOrd != ? and " +
+                "DATEDIFF(day, ExecutionTime, (select TimeSent from [Order] where IdOrd = ?)) <= 30";
+        try (PreparedStatement ps = connection.prepareStatement(queryDisc)) {
+            ps.setInt(1, idOrder);
+            ps.setInt(2, idOrder);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                systemFee = 0.03;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         String query = "insert into [Transaction] (Ammount, IdOrd, ExecutionTime) values (?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setDouble(1, price.doubleValue() * 0.05);
+            ps.setDouble(1, price.doubleValue() * systemFee);
             ps.setInt(2, idOrder);
             ps.setDate(3, new java.sql.Date(receivedTime.getTime().getTime()));
             ps.executeUpdate();

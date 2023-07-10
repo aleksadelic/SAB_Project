@@ -245,15 +245,6 @@ public class da190101_CityOperationsImpl implements CityOperations {
             e.printStackTrace();
         }
 
-        /*for (int i = 0; i < numOfCities; i++) {
-            for (int j = 0; j < numOfCities; j++) {
-                if (distances[i][j] == Integer.MAX_VALUE)
-                    System.out.print("x ");
-                else
-                    System.out.print(distances[i][j] + " ");
-            }
-            System.out.println();
-        }*/
         return distances;
     }
 
@@ -301,17 +292,6 @@ public class da190101_CityOperationsImpl implements CityOperations {
 
     public static void main(String[] args) {
         da190101_CityOperationsImpl obj = new da190101_CityOperationsImpl();
-        /*List<Integer> shops = obj.getShops(1);
-        for (int idShop: shops) {
-            System.out.println(idShop);
-        }
-
-        obj.connectCities(1, 2, 10);
-        obj.connectCities(1,  3, 20);
-        obj.connectCities(2, 3, 40);*/
-
-        //obj.connectCities(3, 4, 5);
-        //obj.connectCities(2, 4, 10);
 
         obj.connectCities(1, 2, 8);
         obj.connectCities(1, 3, 2);

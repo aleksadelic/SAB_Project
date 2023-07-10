@@ -132,20 +132,6 @@ public class da190101_ShopOperationsImpl implements ShopOperations {
 
     public static void main(String[] args) {
         da190101_ShopOperationsImpl obj = new da190101_ShopOperationsImpl();
-        //obj.createShop("Shop 2", "Beograd");
-        //System.out.println(obj.setCity(4, "Nis"));
-        //System.out.println(obj.getCity(3));
-        /*List<Integer> articles = obj.getArticles(3);
-        for (int article: articles) {
-            System.out.println(article);
-        }
-
-        System.out.print("Article count before: ");
-        System.out.println(obj.getArticleCount(1));
-
-        System.out.print("Article count after: ");
-        System.out.println(obj.increaseArticleCount(1, 10));*/
-
         obj.setDiscount(1, 5);
         System.out.println(obj.getDiscount(1));
     }

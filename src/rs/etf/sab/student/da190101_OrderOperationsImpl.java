@@ -12,7 +12,7 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
 
     Connection connection = DB.getInstance().getConnection();
 
-    static OrderOperations ORDER_OPERATIONS = new da190101_OrderOperationsImpl();
+    static da190101_OrderOperationsImpl ORDER_OPERATIONS = new da190101_OrderOperationsImpl();
 
     @Override
     public int addArticle(int idOrder, int idArticle, int count) {
@@ -215,16 +215,37 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
 
     @Override
     public BigDecimal getFinalPrice(int idOrder) {
-        String query = "{ call SP_FINAL_PRICE (?, ?) }";
+        String query = "{ call SP_FINAL_PRICE (?, ?, ?) }";
         try (CallableStatement cs = connection.prepareCall(query)) {
             cs.setInt(1, idOrder);
-            cs.registerOutParameter(2, Types.DECIMAL);
+            cs.setDate(2, new java.sql.Date(da190101_GeneralOperationsImpl.
+                    GENERAL_OPERATIONS.getCurrentTime().getTime().getTime()));
+            cs.registerOutParameter(3, Types.DECIMAL);
             cs.execute();
-            return new BigDecimal(cs.getDouble(2)).setScale(3);
+            return new BigDecimal(cs.getDouble(3)).setScale(3);
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public BigDecimal getFinalPriceWithoutAdditionalDiscount(int idOrder) {
+        String query = "select Item.IdArt, Item.Quantity, Price from Item Join Article on Item.IdArt = Article.IdArt where IdItem = ?";
+        double sum = 0;
+        List<Integer> items = getItems(idOrder);
+        for (int item: items) {
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setInt(1, item);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    sum += rs.getInt(2) * rs.getDouble(3);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return new BigDecimal(sum).subtract(getDiscountSum(idOrder)).setScale(3);
     }
 
     @Override
@@ -334,18 +355,13 @@ public class da190101_OrderOperationsImpl implements OrderOperations {
         da190101_BuyerOperationsImpl buyOp = new da190101_BuyerOperationsImpl();
         da190101_ShopOperationsImpl shopOp = new da190101_ShopOperationsImpl();
 
-        //int idOrder = 40;
-        //ordOp.addArticle(idOrder, 74, 3);
-        //ordOp.addArticle(idOrder, 75, 5);
-        /*shopOp.setDiscount(1, 10);
-        shopOp.setDiscount(2, 20);*/
-        //System.out.println(ordOp.getFinalPrice(idOrder));
-        //ordOp.completeOrder(idOrder);
-
         Calendar initialTime = Calendar.getInstance();
         initialTime.clear();
-        initialTime.set(2018, 0, 1);
+        initialTime.set(2018, 1, 15);
         da190101_GeneralOperationsImpl.GENERAL_OPERATIONS.setInitialTime(initialTime);
+
+        shopOp.setDiscount(1, 10);
+        shopOp.setDiscount(3, 20);
 
         int idOrder = buyOp.createOrder(1);
         ordOp.addArticle(idOrder, 1, 2);
